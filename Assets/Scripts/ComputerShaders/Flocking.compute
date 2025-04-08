@@ -79,7 +79,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         float velocityY = clamp(acceleration.y, -Speed[0], Speed[0]);
         float velocityZ = clamp(acceleration.z, -Speed[0], Speed[0]);
         acceleration = float3(velocityX, velocityY, velocityZ);
-        acceleration -= normalize(positions[index]) * 0.2;
+        acceleration -= normalize(positions[index]) * 0.02;
         
         velocities[index] += acceleration;
         if (index == 0) debugFloat3[0] = velocities[index];
