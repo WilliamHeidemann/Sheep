@@ -1,0 +1,199 @@
+using UnityEngine;
+using static UnityEngine.Debug;
+
+public class FlockingDispatcher : MonoBehaviour
+{
+    [SerializeField] private ComputeShader _flockingShader;
+    [SerializeField] private GameObject _agentPrefab;
+    [SerializeField] private Material _agentShaderMaterial;
+    private int _kernelHandle;
+    private GraphicsBuffer _positionsBuffer;
+    private GraphicsBuffer _velocitiesBuffer;
+
+    private GraphicsBuffer _flockCenterBuffer;
+    private GraphicsBuffer _flockAlignmentBuffer;
+    private GraphicsBuffer _flockSeparationBuffer;
+    
+    private GraphicsBuffer _debugNumberBuffer;
+    private GraphicsBuffer _debugFloat3Buffer;
+    
+    [SerializeField] private int _agentCount;
+    [SerializeField] private float _maxDistance;
+    [SerializeField] private float _minDistance;
+    [SerializeField] private float _speed;
+
+
+    [SerializeField] private bool _drawVelocity;
+    [SerializeField] private bool _drawCenter;
+    [SerializeField] private bool _drawAlignment;
+    [SerializeField] private bool _drawSeparation;
+    [SerializeField] private bool _drawMaxDistance;
+    [SerializeField] private bool _drawMinDistance;
+    [SerializeField] private bool _writeNumber;
+    [SerializeField] private bool _writeFloat3;
+    
+    private RenderParams _materialRenderParams;
+    private Mesh _mesh;
+    private GraphicsBuffer _commandBuffer;
+    private GraphicsBuffer.IndirectDrawIndexedArgs[] _commandData;
+    private const int CommandCount = 1;
+
+    private void Start()
+    {
+        _positionsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
+        _velocitiesBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
+        _flockCenterBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
+        _flockAlignmentBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
+        _flockSeparationBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
+        _debugNumberBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float));
+        _debugFloat3Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 3);
+        
+        var positions = new Vector3[_agentCount];
+        for (int i = 0; i < _agentCount; i++)
+        {
+            var pointInCube = new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(-10f, 10f));
+            var pointOnSphere = pointInCube.normalized;
+            positions[i] = pointOnSphere * Random.value * 10.0f;// + Vector3.up * 10.0f;
+        }
+
+        _kernelHandle = _flockingShader.FindKernel("CSMain");
+        _flockingShader.SetBuffer(_kernelHandle, "positions", _positionsBuffer);
+        _flockingShader.SetBuffer(_kernelHandle, "velocities", _velocitiesBuffer);
+        _flockingShader.SetBuffer(_kernelHandle, "flockCenter", _flockCenterBuffer);
+        _flockingShader.SetBuffer(_kernelHandle, "flockAlignment", _flockAlignmentBuffer);
+        _flockingShader.SetBuffer(_kernelHandle, "flockSeparation", _flockSeparationBuffer);
+        _flockingShader.SetBuffer(_kernelHandle, "debugNumber", _debugNumberBuffer);
+        _flockingShader.SetBuffer(_kernelHandle, "debugFloat3", _debugFloat3Buffer);
+        _flockingShader.SetFloat("AgentsCount", _agentCount);
+        _flockingShader.SetFloat("MaxDistance", _maxDistance);
+        _flockingShader.SetFloat("MinDistance", _minDistance);
+        _flockingShader.SetFloat("Speed", _speed);
+
+        _positionsBuffer.SetData(positions);
+        _agentShaderMaterial.SetBuffer("positions", _positionsBuffer);
+        
+        _materialRenderParams = new RenderParams(_agentShaderMaterial)
+        {
+            worldBounds = new Bounds(Vector3.zero, Vector3.one * 1000)
+        };
+        
+        _mesh = _agentPrefab.GetComponent<MeshFilter>().sharedMesh;
+        _commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, CommandCount, GraphicsBuffer.IndirectDrawIndexedArgs.size);
+        _commandData = new GraphicsBuffer.IndirectDrawIndexedArgs[CommandCount];
+        _commandData[0].indexCountPerInstance = _mesh.GetIndexCount(0);
+        _commandData[0].instanceCount = (uint)_agentCount;
+        _commandData[0].startIndex = _mesh.GetIndexStart(0);
+        _commandData[0].baseVertexIndex = _mesh.GetBaseVertex(0);
+        _commandData[0].startInstance = 0;
+        _commandBuffer.SetData(_commandData);
+    }
+
+    private void Update()
+    {
+        _flockingShader.SetFloat("Time", Time.time);
+        _flockingShader.Dispatch(_kernelHandle, _agentCount / 32, 1, 1);
+        
+        Graphics.RenderMeshIndirect(
+            rparams: _materialRenderParams,
+            mesh: _mesh,
+            commandBuffer: _commandBuffer,
+            commandCount: CommandCount);
+    }
+    
+    private void OnDrawGizmos()
+    {
+        if (!Application.isPlaying)
+            return;
+        
+        if (_writeNumber)
+        {
+            var number = new int[1];
+            _debugNumberBuffer.GetData(number);
+            Log($"Debug Number: {number[0]}");
+        }
+        
+        if (_writeFloat3)
+        {
+            var float3 = new Vector3[1];
+            _debugFloat3Buffer.GetData(float3);
+            Log($"Debug Float3: {float3[0]}");
+        }
+        
+        if (!_drawVelocity && !_drawCenter && !_drawAlignment && !_drawSeparation)
+            return;
+        
+        Vector3[] positions = new Vector3[_agentCount];
+        _positionsBuffer.GetData(positions);
+        
+        if (_drawMaxDistance)
+        {
+            Gizmos.color = Color.yellow;
+            for (int i = 0; i < _agentCount; i++)
+            {
+                Gizmos.DrawWireSphere(positions[i], _maxDistance);
+            }
+        }
+        
+        if (_drawMinDistance)
+        {
+            Gizmos.color = Color.red;
+            for (int i = 0; i < _agentCount; i++)
+            {
+                Gizmos.DrawWireSphere(positions[i], _minDistance);
+            }
+        }
+        
+        if (_drawVelocity)
+        {
+            Vector3[] velocities = new Vector3[_agentCount];
+            _velocitiesBuffer.GetData(velocities);
+            for (int i = 0; i < _agentCount; i++)
+            {
+                Gizmos.color = Color.black;
+                Gizmos.DrawLine(positions[i], positions[i] + velocities[i]);
+            }
+        }
+
+        if (_drawCenter)
+        {
+            Vector3[] center = new Vector3[_agentCount];
+            _flockCenterBuffer.GetData(center);
+            for (int i = 0; i < _agentCount; i++)
+            {
+                DrawLine(positions[i], positions[i] + center[i], Color.yellow);
+            }
+        }
+        
+        if (_drawAlignment)
+        {
+            Vector3[] alignment = new Vector3[_agentCount];
+            _flockAlignmentBuffer.GetData(alignment);
+            for (int i = 0; i < _agentCount; i++)
+            {
+                DrawLine(positions[i], positions[i] + alignment[i], Color.magenta);
+            }
+        }
+        
+        if (_drawSeparation)
+        {
+            Vector3[] separation = new Vector3[_agentCount];
+            _flockSeparationBuffer.GetData(separation);
+            for (int i = 0; i < _agentCount; i++)
+            {
+                DrawLine(positions[i], positions[i] + separation[i], Color.red);
+            }
+        }
+    }
+
+    private void OnDestroy()
+    {
+        _commandBuffer?.Dispose();
+        _positionsBuffer?.Dispose();
+        _velocitiesBuffer?.Dispose();
+        _flockCenterBuffer?.Dispose();
+        _flockAlignmentBuffer?.Dispose();
+        _flockSeparationBuffer?.Dispose();
+        _debugNumberBuffer?.Dispose();
+        _debugFloat3Buffer?.Dispose();
+    }
+}
