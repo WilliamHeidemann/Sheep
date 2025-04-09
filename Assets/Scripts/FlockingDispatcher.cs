@@ -21,7 +21,9 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private float _maxDistance;
     [SerializeField] private float _minDistance;
     [SerializeField] private float _speed;
-
+    [SerializeField] private float _cohesionWeight;
+    [SerializeField] private float _alignmentWeight;
+    [SerializeField] private float _separationWeight;
 
     [SerializeField] private bool _drawVelocity;
     [SerializeField] private bool _drawCenter;
@@ -67,6 +69,9 @@ public class FlockingDispatcher : MonoBehaviour
         _flockingShader.SetFloat("AgentsCount", _agentCount);
         _flockingShader.SetFloat("MaxDistance", _maxDistance);
         _flockingShader.SetFloat("MinDistance", _minDistance);
+        _flockingShader.SetFloat("CohesionWeight", _cohesionWeight);
+        _flockingShader.SetFloat("AlignmentWeight", _alignmentWeight);
+        _flockingShader.SetFloat("SeparationWeight", _separationWeight);
         _flockingShader.SetFloat("Speed", _speed);
 
         _positionsBuffer.SetData(positions);
@@ -91,7 +96,7 @@ public class FlockingDispatcher : MonoBehaviour
     private void Update()
     {
         _flockingShader.SetFloat("Time", Time.time);
-        _flockingShader.Dispatch(_kernelHandle, _agentCount / 32, 1, 1);
+        _flockingShader.Dispatch(_kernelHandle, Mathf.CeilToInt(_agentCount / 32.0f), 1, 1);
         
         Graphics.RenderMeshIndirect(
             rparams: _materialRenderParams,
