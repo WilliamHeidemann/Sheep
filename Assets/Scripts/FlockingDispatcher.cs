@@ -6,6 +6,8 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private ComputeShader _flockingShader;
     [SerializeField] private GameObject _agentPrefab;
     [SerializeField] private Material _agentShaderMaterial;
+    [SerializeField] private TerrainData _terrain;
+    
     private int _kernelHandle;
     private GraphicsBuffer _positionsBuffer;
     private GraphicsBuffer _velocitiesBuffer;
@@ -15,9 +17,11 @@ public class FlockingDispatcher : MonoBehaviour
     private GraphicsBuffer _flockSeparationBuffer;
     
     private GraphicsBuffer _debugNumberBuffer;
+    private GraphicsBuffer _debugFloat2Buffer;
     private GraphicsBuffer _debugFloat3Buffer;
-    
+
     [SerializeField] private int _agentCount;
+    [SerializeField] private float _spawnRadius;
     [SerializeField] private float _maxDistance;
     [SerializeField] private float _minDistance;
     [SerializeField] private float _speed;
@@ -32,6 +36,7 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private bool _drawMaxDistance;
     [SerializeField] private bool _drawMinDistance;
     [SerializeField] private bool _writeNumber;
+    [SerializeField] private bool _writeFloat2;
     [SerializeField] private bool _writeFloat3;
     
     private RenderParams _materialRenderParams;
@@ -43,20 +48,30 @@ public class FlockingDispatcher : MonoBehaviour
     private void Start()
     {
         _positionsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
-        _velocitiesBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
-        _flockCenterBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
-        _flockAlignmentBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
-        _flockSeparationBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
-        _debugNumberBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float));
+        _velocitiesBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 2);
+        _flockCenterBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 2);
+        _flockAlignmentBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 2);
+        _flockSeparationBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 2);
+        _debugFloat2Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 2);
         _debugFloat3Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 3);
+        _debugNumberBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float));
+
+        // var heights2D = _terrain.GetHeights(0, 0, _terrain.heightmapResolution, _terrain.heightmapResolution);
+        // var heights = new float[_terrain.heightmapResolution * _terrain.heightmapResolution];
+        // print(_terrain.heightmapResolution);
+        // print(_terrain.heightmapResolution * _terrain.heightmapResolution);
+        
         
         var positions = new Vector3[_agentCount];
+        var velocities = new Vector2[_agentCount];
         for (int i = 0; i < _agentCount; i++)
         {
-            var pointInCube = new Vector3(Random.Range(-10f, 10f), Random.Range(-10f, 10f), Random.Range(-10f, 10f));
-            var pointOnSphere = pointInCube.normalized;
-            positions[i] = pointOnSphere * Random.value * 10.0f;// + Vector3.up * 10.0f;
+            var pointInCircle = Random.insideUnitCircle * _spawnRadius;
+            positions[i] = new Vector3(pointInCircle.x, 0, pointInCircle.y); // + Vector3.up * 10.0f;
+            velocities[i] = Vector2.zero;
         }
+        _positionsBuffer.SetData(positions);
+        _velocitiesBuffer.SetData(velocities);
 
         _kernelHandle = _flockingShader.FindKernel("CSMain");
         _flockingShader.SetBuffer(_kernelHandle, "positions", _positionsBuffer);
@@ -65,6 +80,7 @@ public class FlockingDispatcher : MonoBehaviour
         _flockingShader.SetBuffer(_kernelHandle, "flockAlignment", _flockAlignmentBuffer);
         _flockingShader.SetBuffer(_kernelHandle, "flockSeparation", _flockSeparationBuffer);
         _flockingShader.SetBuffer(_kernelHandle, "debugNumber", _debugNumberBuffer);
+        _flockingShader.SetBuffer(_kernelHandle, "debugFloat2", _debugFloat2Buffer);
         _flockingShader.SetBuffer(_kernelHandle, "debugFloat3", _debugFloat3Buffer);
         _flockingShader.SetFloat("AgentsCount", _agentCount);
         _flockingShader.SetFloat("MaxDistance", _maxDistance);
@@ -74,7 +90,6 @@ public class FlockingDispatcher : MonoBehaviour
         _flockingShader.SetFloat("SeparationWeight", _separationWeight);
         _flockingShader.SetFloat("Speed", _speed);
 
-        _positionsBuffer.SetData(positions);
         _agentShaderMaterial.SetBuffer("positions", _positionsBuffer);
         
         _materialRenderParams = new RenderParams(_agentShaderMaterial)
@@ -103,18 +118,24 @@ public class FlockingDispatcher : MonoBehaviour
             mesh: _mesh,
             commandBuffer: _commandBuffer,
             commandCount: CommandCount);
-    }
-    
-    private void OnDrawGizmos()
-    {
-        if (!Application.isPlaying)
-            return;
         
+        DebugLog();
+    }
+
+    private void DebugLog()
+    {
         if (_writeNumber)
         {
             var number = new int[1];
             _debugNumberBuffer.GetData(number);
             Log($"Debug Number: {number[0]}");
+        }
+        
+        if (_writeFloat2)
+        {
+            var float2 = new Vector2[1];
+            _debugFloat2Buffer.GetData(float2);
+            Log($"Debug Float2: {float2[0]}");
         }
         
         if (_writeFloat3)
@@ -123,6 +144,12 @@ public class FlockingDispatcher : MonoBehaviour
             _debugFloat3Buffer.GetData(float3);
             Log($"Debug Float3: {float3[0]}");
         }
+    }
+    
+    private void OnDrawGizmos()
+    {
+        if (!Application.isPlaying)
+            return;
         
         if (!_drawVelocity && !_drawCenter && !_drawAlignment && !_drawSeparation)
             return;
@@ -150,42 +177,42 @@ public class FlockingDispatcher : MonoBehaviour
         
         if (_drawVelocity)
         {
-            Vector3[] velocities = new Vector3[_agentCount];
+            Vector2[] velocities = new Vector2[_agentCount];
             _velocitiesBuffer.GetData(velocities);
             for (int i = 0; i < _agentCount; i++)
             {
                 Gizmos.color = Color.black;
-                Gizmos.DrawLine(positions[i], positions[i] + velocities[i]);
+                Gizmos.DrawLine(positions[i], positions[i].AddFlat(velocities[i]));
             }
         }
 
         if (_drawCenter)
         {
-            Vector3[] center = new Vector3[_agentCount];
+            Vector2[] center = new Vector2[_agentCount];
             _flockCenterBuffer.GetData(center);
             for (int i = 0; i < _agentCount; i++)
             {
-                DrawLine(positions[i], positions[i] + center[i], Color.yellow);
+                DrawLine(positions[i], positions[i].AddFlat(center[i]), Color.yellow);
             }
         }
         
         if (_drawAlignment)
         {
-            Vector3[] alignment = new Vector3[_agentCount];
+            Vector2[] alignment = new Vector2[_agentCount];
             _flockAlignmentBuffer.GetData(alignment);
             for (int i = 0; i < _agentCount; i++)
             {
-                DrawLine(positions[i], positions[i] + alignment[i], Color.magenta);
+                DrawLine(positions[i], positions[i].AddFlat(alignment[i]), Color.magenta);
             }
         }
         
         if (_drawSeparation)
         {
-            Vector3[] separation = new Vector3[_agentCount];
+            Vector2[] separation = new Vector2[_agentCount];
             _flockSeparationBuffer.GetData(separation);
             for (int i = 0; i < _agentCount; i++)
             {
-                DrawLine(positions[i], positions[i] + separation[i], Color.red);
+                DrawLine(positions[i], positions[i].AddFlat(separation[i]), Color.red);
             }
         }
     }
@@ -199,6 +226,6 @@ public class FlockingDispatcher : MonoBehaviour
         _flockAlignmentBuffer?.Dispose();
         _flockSeparationBuffer?.Dispose();
         _debugNumberBuffer?.Dispose();
-        _debugFloat3Buffer?.Dispose();
+        _debugFloat2Buffer?.Dispose();
     }
 }
