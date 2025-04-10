@@ -1,4 +1,5 @@
 using UnityEngine;
+using UtilityToolkit.Editor;
 using static UnityEngine.Debug;
 
 public class FlockingDispatcher : MonoBehaviour
@@ -217,6 +218,17 @@ public class FlockingDispatcher : MonoBehaviour
         }
     }
 
+    [Button]
+    public void UpdateValues()
+    {
+        _flockingShader.SetFloat("MaxDistance", _maxDistance);
+        _flockingShader.SetFloat("MinDistance", _minDistance);
+        _flockingShader.SetFloat("CohesionWeight", _cohesionWeight);
+        _flockingShader.SetFloat("AlignmentWeight", _alignmentWeight);
+        _flockingShader.SetFloat("SeparationWeight", _separationWeight);
+        _flockingShader.SetFloat("Speed", _speed);
+    }
+    
     private void OnDestroy()
     {
         _commandBuffer?.Dispose();

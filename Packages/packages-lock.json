@@ -205,6 +205,13 @@
       },
       "url": "https://packages.unity.com"
     },
+    "com.williamheidemann.utilitytoolkit": {
+      "version": "https://github.com/WilliamHeidemann/UtilityToolkit.git",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {},
+      "hash": "14d823cf5f352686b3b433e936fd6ceb7b287c4c"
+    },
     "com.unity.modules.accessibility": {
       "version": "1.0.0",
       "depth": 0,

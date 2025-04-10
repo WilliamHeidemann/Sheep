@@ -103,6 +103,7 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         // acceleration = normalize(acceleration);
 
         velocities[index] += acceleration;
+        velocities[index] *= 0.95f;
         float3 velocity3 = float3(velocities[index].x, 0, velocities[index].y);
         positions[index] += velocity3 * Speed[0];
     }
