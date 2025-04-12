@@ -6,7 +6,7 @@ RWStructuredBuffer<float2> flockCenter;
 RWStructuredBuffer<float2> flockAlignment;
 RWStructuredBuffer<float2> flockSeparation;
 
-// RWStructuredBuffer<float> terrainHeight;
+StructuredBuffer<float> terrainHeight;
 
 cbuffer TimeBuffer
 {
@@ -62,55 +62,55 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     int separationCount = 0;
     flockCenter[index] = float2(0, 0);
     flockAlignment[index] = float2(0, 0);
-    flockSeparation[index] = float2(0, 0);
-    if (index == 0) debugFloat3[0] = positions[0];
+    // if (index == 0) debugFloat2[0] = flockSeparation[0];
 
     for (int i = 0; i < agentsCount; i++)
     {
-        // if (i == index) continue;
-
-        nearbyCount++;
         float2 offset = positions[i].xz - positions[index].xz;
-        // if (squareDistance > MaxDistance[0]) continue;
+        float squareDistance = offset.x * offset.x + offset.y * offset.y;
+        if (squareDistance > MaxDistance[0]) continue;
+        nearbyCount++;
         flockCenter[index] += offset;
         if (length(velocities[i]) != 0) flockAlignment[index] += normalize(velocities[i]);
 
-        float squareDistance = offset.x * offset.x + offset.y * offset.y;
         float distance = sqrt(squareDistance);
         if (distance > MinDistance[0] || i == index) continue;
         separationCount++;
         flockSeparation[index] -= offset / squareDistance;
     }
 
-    if (index == 0) debugNumber[0] = nearbyCount;
-
     if (nearbyCount > 0)
     {
         flockCenter[index] /= nearbyCount;
         flockAlignment[index] /= nearbyCount;
-        if (index == 0) debugFloat2[0] = flockAlignment[index];
 
         flockCenter[index] *= CohesionWeight[0];
         flockAlignment[index] *= AlignmentWeight[0];
         flockSeparation[index] *= SeparationWeight[0];
 
-        float2 acceleration = flockCenter[index] + flockAlignment[index] + flockSeparation[index];
-        // float velocityX = clamp(acceleration.x, -Speed[0], Speed[0]);
-        // float velocityY = clamp(acceleration.y, -Speed[0], Speed[0]);
-        // float velocityZ = clamp(acceleration.z, -Speed[0], Speed[0]);
-        // acceleration = float3(velocityX, velocityY, velocityZ);
+        if (length(flockCenter[index]) < 3)
+        {
+            flockCenter[index] = float2(0, 0);
+        }
 
-        // acceleration = normalize(acceleration);
+        float2 acceleration = flockCenter[index] + flockAlignment[index] + flockSeparation[index];
+        if (index == 0) debugFloat3[0] = acceleration[0];
 
         velocities[index] += acceleration;
         velocities[index] *= 0.95f;
+        // if (index == 0) debugNumber[0] = length(velocity);
         float3 velocity3 = float3(velocities[index].x, 0, velocities[index].y);
         positions[index] += velocity3 * Speed[0];
+
     }
     else
     {
         flockCenter[index] = positions[index].xz;
         flockAlignment[index] = velocities[index];
+        flockSeparation[index] = float2(0, 0);
+    }
+    if (separationCount == 0) 
+    {
         flockSeparation[index] = float2(0, 0);
     }
 }
