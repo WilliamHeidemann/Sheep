@@ -48,6 +48,18 @@ cbuffer SeparationWeightBuffer
     float SeparationWeight[1];
 }
 
+cbuffer TerrainOffsetXBuffer
+{
+    float TerrainOffsetX[1];
+}
+
+cbuffer TerrainOffsetZBuffer
+{
+    float TerrainOffsetZ[1];
+}
+
+
+
 RWStructuredBuffer<int> debugNumber;
 RWStructuredBuffer<float2> debugFloat2;
 RWStructuredBuffer<float3> debugFloat3;
@@ -62,7 +74,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     int separationCount = 0;
     flockCenter[index] = float2(0, 0);
     flockAlignment[index] = float2(0, 0);
-    // if (index == 0) debugFloat2[0] = flockSeparation[0];
 
     for (int i = 0; i < agentsCount; i++)
     {
@@ -94,14 +105,11 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         }
 
         float2 acceleration = flockCenter[index] + flockAlignment[index] + flockSeparation[index];
-        if (index == 0) debugFloat3[0] = acceleration[0];
 
         velocities[index] += acceleration;
         velocities[index] *= 0.95f;
-        // if (index == 0) debugNumber[0] = length(velocity);
         float3 velocity3 = float3(velocities[index].x, 0, velocities[index].y);
         positions[index] += velocity3 * Speed[0];
-
     }
     else
     {
@@ -113,4 +121,21 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     {
         flockSeparation[index] = float2(0, 0);
     }
+    
+    // const int resolution = 33;
+    // float2 clampedPosition = clamp(positions[index].xz, float2(-15, -15), float2(15, 15));
+    // if (index == 0) debugFloat2[0] = clampedPosition;
+    // float2 terrainPosition = clampedPosition - float2(TerrainOffsetX[0], TerrainOffsetZ[0]);
+    // float fractionX = terrainPosition.x * resolution / 30.0f;
+    // float fractionZ = terrainPosition.y * resolution / 30.0f;
+    // int positionIndex = int(fractionX + fractionZ * resolution);
+    // // if(index == 0) debugNumber[0] = positionIndex;
+    // if (positionIndex < 0 || positionIndex >= resolution * resolution)
+    // {
+    //     return;
+    // }
+    // float terrainHeightValue = terrainHeight[positionIndex];
+    // // if(index == 0) debugNumber[0] = terrainHeightValue;
+    // positions[index].y = terrainHeightValue;
+    // if (index == 0) debugFloat3[0] = positions[0];
 }

@@ -8,6 +8,7 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private GameObject _agentPrefab;
     [SerializeField] private Material _agentShaderMaterial;
     [SerializeField] private TerrainData _terrain;
+    [SerializeField] private Terrain _terrainComponent;
 
     private int _kernelHandle;
     private GraphicsBuffer _positionsBuffer;
@@ -20,6 +21,9 @@ public class FlockingDispatcher : MonoBehaviour
     private GraphicsBuffer _debugNumberBuffer;
     private GraphicsBuffer _debugFloat2Buffer;
     private GraphicsBuffer _debugFloat3Buffer;
+
+    private GraphicsBuffer _terrainBuffer;
+    private float[] _heights;
 
     [SerializeField] private int _agentCount;
     [SerializeField] private float _spawnRadius;
@@ -59,13 +63,53 @@ public class FlockingDispatcher : MonoBehaviour
         _debugFloat2Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 2);
         _debugFloat3Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 3);
         _debugNumberBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float));
+        SetupTerrainBuffer();
 
-        // var heights2D = _terrain.GetHeights(0, 0, _terrain.heightmapResolution, _terrain.heightmapResolution);
-        // var heights = new float[_terrain.heightmapResolution * _terrain.heightmapResolution];
-        // print(_terrain.heightmapResolution);
-        // print(_terrain.heightmapResolution * _terrain.heightmapResolution);
+        SetBuffers();
 
+        _materialRenderParams = new RenderParams(_agentShaderMaterial)
+        {
+            worldBounds = new Bounds(Vector3.zero, Vector3.one * 1000)
+        };
 
+        _mesh = _agentPrefab.GetComponent<MeshFilter>().sharedMesh;
+        _commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, CommandCount,
+            GraphicsBuffer.IndirectDrawIndexedArgs.size);
+        _commandData = new GraphicsBuffer.IndirectDrawIndexedArgs[CommandCount];
+        _commandData[0].indexCountPerInstance = _mesh.GetIndexCount(0);
+        _commandData[0].instanceCount = (uint)_agentCount;
+        _commandData[0].startIndex = _mesh.GetIndexStart(0);
+        _commandData[0].baseVertexIndex = _mesh.GetBaseVertex(0);
+        _commandData[0].startInstance = 0;
+        _commandBuffer.SetData(_commandData);
+    }
+
+    private void SetupTerrainBuffer()
+    {
+        var terrainResolution2D = _terrain.heightmapResolution * _terrain.heightmapResolution;
+        _terrainBuffer =
+            new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, terrainResolution2D, sizeof(float));
+
+        var heights2D = _terrain.GetHeights(0, 0, _terrain.heightmapResolution, _terrain.heightmapResolution);
+        _heights = new float[terrainResolution2D];
+        for (int i = 0; i < _terrain.heightmapResolution; i++)
+        {
+            for (int j = 0; j < _terrain.heightmapResolution; j++)
+            {
+                _heights[i * _terrain.heightmapResolution + j] = heights2D[i, j] * _terrain.size.y;
+                // heights[i * _terrain.heightmapResolution + j] = _terrainComponent.SampleHeight(Vector3.zero);
+            }
+        }
+        
+        _terrainBuffer.SetData(_heights);
+        
+        _flockingShader.SetBuffer(_kernelHandle, "terrainHeight", _terrainBuffer);
+        _flockingShader.SetFloat("TerrainOffsetX", _terrainComponent.transform.position.x);
+        _flockingShader.SetFloat("TerrainOffsetZ", _terrainComponent.transform.position.z);
+    }
+
+    private void SetBuffers()
+    {
         var positions = new Vector3[_agentCount];
         var velocities = new Vector2[_agentCount];
         var separations = new Vector2[_agentCount];
@@ -99,22 +143,6 @@ public class FlockingDispatcher : MonoBehaviour
         _flockingShader.SetFloat("Speed", _speed);
 
         _agentShaderMaterial.SetBuffer("positions", _positionsBuffer);
-
-        _materialRenderParams = new RenderParams(_agentShaderMaterial)
-        {
-            worldBounds = new Bounds(Vector3.zero, Vector3.one * 1000)
-        };
-
-        _mesh = _agentPrefab.GetComponent<MeshFilter>().sharedMesh;
-        _commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, CommandCount,
-            GraphicsBuffer.IndirectDrawIndexedArgs.size);
-        _commandData = new GraphicsBuffer.IndirectDrawIndexedArgs[CommandCount];
-        _commandData[0].indexCountPerInstance = _mesh.GetIndexCount(0);
-        _commandData[0].instanceCount = (uint)_agentCount;
-        _commandData[0].startIndex = _mesh.GetIndexStart(0);
-        _commandData[0].baseVertexIndex = _mesh.GetBaseVertex(0);
-        _commandData[0].startInstance = 0;
-        _commandBuffer.SetData(_commandData);
     }
 
     private void Update()
@@ -159,6 +187,17 @@ public class FlockingDispatcher : MonoBehaviour
     {
         if (!Application.isPlaying)
             return;
+        
+        // for (int i = 0; i < _terrain.heightmapResolution; i++)
+        // {
+        //     for (int j = 0; j < _terrain.heightmapResolution; j++)
+        //     {
+        //         var height = _heights[i * _terrain.heightmapResolution + j];
+        //         var position = new Vector3(i, height, j) + _terrainComponent.transform.position;
+        //         Gizmos.color = Color.white;
+        //         Gizmos.DrawSphere(position, 0.1f);
+        //     }
+        // }
 
         if (!_drawVelocity && !_drawCenter && !_drawAlignment && !_drawSeparation && !_drawMinDistance &&
             !_drawMaxDistance)
