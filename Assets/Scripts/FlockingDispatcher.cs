@@ -11,8 +11,10 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private Terrain _terrainComponent;
 
     private int _kernelHandle;
-    private GraphicsBuffer _positionsBuffer;
-    private GraphicsBuffer _velocitiesBuffer;
+
+    private GraphicsBuffer _agentsBuffer;
+    // private GraphicsBuffer _positionsBuffer;
+    // private GraphicsBuffer _velocitiesBuffer;
 
     private GraphicsBuffer _flockCenterBuffer;
     private GraphicsBuffer _flockAlignmentBuffer;
@@ -52,8 +54,15 @@ public class FlockingDispatcher : MonoBehaviour
 
     private void Start()
     {
-        _positionsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 3);
-        _velocitiesBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 2);
+        CreateBuffers();
+        SetupTerrainBuffer();
+        SetBuffers();
+        SetupRenderingBuffer();
+    }
+
+    private void CreateBuffers()
+    {
+        _agentsBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 5);
         _flockCenterBuffer =
             new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, _agentCount, sizeof(float) * 2);
         _flockAlignmentBuffer =
@@ -63,16 +72,26 @@ public class FlockingDispatcher : MonoBehaviour
         _debugFloat2Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 2);
         _debugFloat3Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 3);
         _debugNumberBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float));
-        SetupTerrainBuffer();
+    }
 
-        SetBuffers();
-
+    private void SetupRenderingBuffer()
+    {
         _materialRenderParams = new RenderParams(_agentShaderMaterial)
         {
             worldBounds = new Bounds(Vector3.zero, Vector3.one * 1000)
         };
 
-        _mesh = _agentPrefab.GetComponent<MeshFilter>().sharedMesh;
+        if (_agentPrefab.TryGetComponent<MeshFilter>(out var meshFilter))
+        {
+            _mesh = meshFilter.sharedMesh;
+        }
+        else
+        {
+            var combineInstances = CombineInstancesSkinnedMeshRenderers();
+            _mesh = new Mesh();
+            _mesh.CombineMeshes(combineInstances);
+        }
+
         _commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, CommandCount,
             GraphicsBuffer.IndirectDrawIndexedArgs.size);
         _commandData = new GraphicsBuffer.IndirectDrawIndexedArgs[CommandCount];
@@ -82,6 +101,22 @@ public class FlockingDispatcher : MonoBehaviour
         _commandData[0].baseVertexIndex = _mesh.GetBaseVertex(0);
         _commandData[0].startInstance = 0;
         _commandBuffer.SetData(_commandData);
+    }
+
+    private CombineInstance[] CombineInstancesSkinnedMeshRenderers()
+    {
+        var skinnedMeshRenderers = _agentPrefab.GetComponentsInChildren<SkinnedMeshRenderer>();
+        var combineInstances = new CombineInstance[skinnedMeshRenderers.Length];
+        for (int i = 0; i < skinnedMeshRenderers.Length; i++)
+        {
+            var mesh = new Mesh();
+            skinnedMeshRenderers[i].BakeMesh(mesh);
+
+            combineInstances[i].mesh = mesh;
+            combineInstances[i].transform = skinnedMeshRenderers[i].localToWorldMatrix;
+        }
+
+        return combineInstances;
     }
 
     private void SetupTerrainBuffer()
@@ -100,9 +135,9 @@ public class FlockingDispatcher : MonoBehaviour
                 // heights[i * _terrain.heightmapResolution + j] = _terrainComponent.SampleHeight(Vector3.zero);
             }
         }
-        
+
         _terrainBuffer.SetData(_heights);
-        
+
         _flockingShader.SetBuffer(_kernelHandle, "terrainHeight", _terrainBuffer);
         _flockingShader.SetFloat("TerrainOffsetX", _terrainComponent.transform.position.x);
         _flockingShader.SetFloat("TerrainOffsetZ", _terrainComponent.transform.position.z);
@@ -110,24 +145,24 @@ public class FlockingDispatcher : MonoBehaviour
 
     private void SetBuffers()
     {
-        var positions = new Vector3[_agentCount];
-        var velocities = new Vector2[_agentCount];
+        var agents = new Agent[_agentCount];
         var separations = new Vector2[_agentCount];
         for (int i = 0; i < _agentCount; i++)
         {
             var pointInCircle = Random.insideUnitCircle * _spawnRadius;
-            positions[i] = new Vector3(pointInCircle.x, 0, pointInCircle.y); // + Vector3.up * 10.0f;
-            velocities[i] = Vector2.zero;
             separations[i] = Vector2.zero;
+            agents[i] = new Agent
+            {
+                Position = new Vector3(pointInCircle.x, 0, pointInCircle.y),
+                Velocity = Vector2.zero
+            };
         }
 
-        _positionsBuffer.SetData(positions);
-        _velocitiesBuffer.SetData(velocities);
+        _agentsBuffer.SetData(agents);
         _flockSeparationBuffer.SetData(separations);
 
         _kernelHandle = _flockingShader.FindKernel("CSMain");
-        _flockingShader.SetBuffer(_kernelHandle, "positions", _positionsBuffer);
-        _flockingShader.SetBuffer(_kernelHandle, "velocities", _velocitiesBuffer);
+        _flockingShader.SetBuffer(_kernelHandle, "agents", _agentsBuffer);
         _flockingShader.SetBuffer(_kernelHandle, "flockCenter", _flockCenterBuffer);
         _flockingShader.SetBuffer(_kernelHandle, "flockAlignment", _flockAlignmentBuffer);
         _flockingShader.SetBuffer(_kernelHandle, "flockSeparation", _flockSeparationBuffer);
@@ -142,12 +177,12 @@ public class FlockingDispatcher : MonoBehaviour
         _flockingShader.SetFloat("SeparationWeight", _separationWeight);
         _flockingShader.SetFloat("Speed", _speed);
 
-        _agentShaderMaterial.SetBuffer("positions", _positionsBuffer);
+        _agentShaderMaterial.SetBuffer("agents", _agentsBuffer);
     }
 
     private void Update()
     {
-        _flockingShader.SetFloat("Time", Time.time);
+        _flockingShader.SetFloat("DeltaTime", Time.deltaTime);
         _flockingShader.Dispatch(_kernelHandle, Mathf.CeilToInt(_agentCount / 32.0f), 1, 1);
 
         Graphics.RenderMeshIndirect(
@@ -187,7 +222,7 @@ public class FlockingDispatcher : MonoBehaviour
     {
         if (!Application.isPlaying)
             return;
-        
+
         // for (int i = 0; i < _terrain.heightmapResolution; i++)
         // {
         //     for (int j = 0; j < _terrain.heightmapResolution; j++)
@@ -203,15 +238,15 @@ public class FlockingDispatcher : MonoBehaviour
             !_drawMaxDistance)
             return;
 
-        Vector3[] positions = new Vector3[_agentCount];
-        _positionsBuffer.GetData(positions);
+        Agent[] agents = new Agent[_agentCount];
+        _agentsBuffer.GetData(agents);
 
         if (_drawMaxDistance)
         {
             Gizmos.color = Color.yellow;
             for (int i = 0; i < _agentCount; i++)
             {
-                Gizmos.DrawWireSphere(positions[i], _maxDistance);
+                Gizmos.DrawWireSphere(agents[i].Position, _maxDistance);
             }
         }
 
@@ -220,18 +255,17 @@ public class FlockingDispatcher : MonoBehaviour
             Gizmos.color = Color.red;
             for (int i = 0; i < _agentCount; i++)
             {
-                Gizmos.DrawWireSphere(positions[i], _minDistance);
+                Gizmos.DrawWireSphere(agents[i].Position, _minDistance);
             }
         }
 
         if (_drawVelocity)
         {
             Vector2[] velocities = new Vector2[_agentCount];
-            _velocitiesBuffer.GetData(velocities);
             for (int i = 0; i < _agentCount; i++)
             {
                 Gizmos.color = Color.black;
-                Gizmos.DrawLine(positions[i], positions[i].AddFlat(velocities[i]));
+                Gizmos.DrawLine(agents[i].Position, agents[i].Position.AddFlat(agents[i].Velocity));
             }
         }
 
@@ -241,7 +275,7 @@ public class FlockingDispatcher : MonoBehaviour
             _flockCenterBuffer.GetData(center);
             for (int i = 0; i < _agentCount; i++)
             {
-                DrawLine(positions[i], positions[i].AddFlat(center[i]), Color.yellow);
+                DrawLine(agents[i].Position, agents[i].Position.AddFlat(center[i]), Color.yellow);
             }
         }
 
@@ -251,7 +285,7 @@ public class FlockingDispatcher : MonoBehaviour
             _flockAlignmentBuffer.GetData(alignment);
             for (int i = 0; i < _agentCount; i++)
             {
-                DrawLine(positions[i], positions[i].AddFlat(alignment[i]), Color.magenta);
+                DrawLine(agents[i].Position, agents[i].Position.AddFlat(alignment[i]), Color.magenta);
             }
         }
 
@@ -261,7 +295,7 @@ public class FlockingDispatcher : MonoBehaviour
             _flockSeparationBuffer.GetData(separation);
             for (int i = 0; i < _agentCount; i++)
             {
-                DrawLine(positions[i], positions[i].AddFlat(separation[i]), Color.red);
+                DrawLine(agents[i].Position, agents[i].Position.AddFlat(separation[i]), Color.red);
             }
         }
     }
@@ -280,12 +314,17 @@ public class FlockingDispatcher : MonoBehaviour
     private void OnDestroy()
     {
         _commandBuffer?.Dispose();
-        _positionsBuffer?.Dispose();
-        _velocitiesBuffer?.Dispose();
+        _agentsBuffer?.Dispose();
         _flockCenterBuffer?.Dispose();
         _flockAlignmentBuffer?.Dispose();
         _flockSeparationBuffer?.Dispose();
         _debugNumberBuffer?.Dispose();
         _debugFloat2Buffer?.Dispose();
     }
+}
+
+struct Agent
+{
+    public Vector3 Position;
+    public Vector2 Velocity;
 }

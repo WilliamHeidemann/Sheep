@@ -1,16 +1,24 @@
 #pragma kernel CSMain
 
-RWStructuredBuffer<float3> positions;
-RWStructuredBuffer<float2> velocities;
+// RWStructuredBuffer<float3> positions;
+// RWStructuredBuffer<float2> velocities;
+
+struct Agent
+{
+    float3 position;
+    float2 velocity;
+};
+
+RWStructuredBuffer<Agent> agents;
 RWStructuredBuffer<float2> flockCenter;
 RWStructuredBuffer<float2> flockAlignment;
 RWStructuredBuffer<float2> flockSeparation;
 
 StructuredBuffer<float> terrainHeight;
 
-cbuffer TimeBuffer
+cbuffer DeltaTimeBuffer
 {
-    float Time[1];
+    float DeltaTime[1];
 }
 
 cbuffer AgentsCountBuffer
@@ -77,12 +85,12 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
     for (int i = 0; i < agentsCount; i++)
     {
-        float2 offset = positions[i].xz - positions[index].xz;
+        float2 offset = agents[i].position.xz - agents[index].position.xz;
         float squareDistance = offset.x * offset.x + offset.y * offset.y;
         if (squareDistance > MaxDistance[0]) continue;
         nearbyCount++;
         flockCenter[index] += offset;
-        if (length(velocities[i]) != 0) flockAlignment[index] += normalize(velocities[i]);
+        if (length(agents[i].velocity) != 0) flockAlignment[index] += normalize(agents[i].velocity);
 
         float distance = sqrt(squareDistance);
         if (distance > MinDistance[0] || i == index) continue;
@@ -99,22 +107,25 @@ void CSMain(uint3 id : SV_DispatchThreadID)
         flockAlignment[index] *= AlignmentWeight[0];
         flockSeparation[index] *= SeparationWeight[0];
 
-        if (length(flockCenter[index]) < 3)
+        float cohesion = length(flockCenter[index]);
+        if (cohesion < 1)// || cohesion > 10)
         {
             flockCenter[index] = float2(0, 0);
         }
 
         float2 acceleration = flockCenter[index] + flockAlignment[index] + flockSeparation[index];
 
-        velocities[index] += acceleration;
-        velocities[index] *= 0.95f;
-        float3 velocity3 = float3(velocities[index].x, 0, velocities[index].y);
-        positions[index] += velocity3 * Speed[0];
+        agents[index].velocity += acceleration;
+        agents[index].velocity *= 0.95f;
+        float3 velocity3 = float3(agents[index].velocity.x, 0, agents[index].velocity.y);
+
+        
+        agents[index].position += velocity3 * (Speed[0] * DeltaTime[0]);
     }
     else
     {
-        flockCenter[index] = positions[index].xz;
-        flockAlignment[index] = velocities[index];
+        flockCenter[index] = agents[index].position.xz;
+        flockAlignment[index] = agents[index].velocity;
         flockSeparation[index] = float2(0, 0);
     }
     if (separationCount == 0) 

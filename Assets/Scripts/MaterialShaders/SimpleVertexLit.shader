@@ -15,13 +15,16 @@ Shader "Custom/SimpleVertexLit"
         Pass
         {
             Name "ForwardLit"
-            Tags { "LightMode" = "UniversalForward" }
-            
-            HLSLPROGRAM 
+            Tags
+            {
+                "LightMode" = "UniversalForward"
+            }
+
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
-            
+
             struct appdata
             {
                 float4 vertex : POSITION;
@@ -34,24 +37,32 @@ Shader "Custom/SimpleVertexLit"
                 float4 color : COLOR;
             };
 
+            struct Agent
+            {
+                float3 position;
+                float2 velocity;
+            };
+
             CBUFFER_START(UnityPerMaterial)
                 float4 _Color;
             CBUFFER_END
 
-            StructuredBuffer<float3> positions;
+            StructuredBuffer<Agent> agents;
 
             v2f vert(appdata v, const uint id : SV_InstanceID)
             {
                 v2f output;
 
-                float3 offset = positions[id];
-                float3 worldPosition = TransformObjectToWorldNormal(v.vertex.xyz) + offset;
+                float3 offset = agents[id].position;
+                // float3 worldPosition = TransformObjectToWorldNormal(v.vertex.xyz) + offset; // for single mesh filter object
+                float3 worldPosition = v.vertex.xyz + offset; // for combined skinned meshes
                 output.position = TransformWorldToHClip(worldPosition);
 
-                float3 worldNormal = TransformObjectToWorldNormal(v.normal);
-                
+                // float3 worldNormal = TransformObjectToWorldNormal(v.normal); // for single mesh filter object
+                float3 worldNormal = v.normal; // for combined skinned meshes
+
                 Light light = GetMainLight();
-                
+
                 float normalDotLight = max(0, dot(worldNormal, light.direction));
 
                 output.color = _Color * normalDotLight;
