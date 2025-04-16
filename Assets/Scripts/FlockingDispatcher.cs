@@ -44,6 +44,7 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private bool _writeFloat2;
     [SerializeField] private bool _writeFloat3;
 
+    private int _threadGroupCount;
     private RenderParams _materialRenderParams;
     private Mesh _mesh;
     private GraphicsBuffer _commandBuffer;
@@ -160,6 +161,8 @@ public class FlockingDispatcher : MonoBehaviour
         _flockSeparationBuffer.SetData(separations);
 
         _kernelHandle = _flockingShader.FindKernel("CSMain");
+        _flockingShader.GetKernelThreadGroupSizes(_kernelHandle, out var threadGroupSize, out _, out _);
+        _threadGroupCount = Mathf.CeilToInt(_agentCount / (float)threadGroupSize);
         _flockingShader.SetBuffer(_kernelHandle, "agents", _agentsBuffer);
         _flockingShader.SetBuffer(_kernelHandle, "flockCenter", _flockCenterBuffer);
         _flockingShader.SetBuffer(_kernelHandle, "flockAlignment", _flockAlignmentBuffer);
@@ -181,7 +184,7 @@ public class FlockingDispatcher : MonoBehaviour
     private void Update()
     {
         _flockingShader.SetFloat("DeltaTime", Time.deltaTime);
-        _flockingShader.Dispatch(_kernelHandle, Mathf.CeilToInt(_agentCount / 32.0f), 1, 1);
+        _flockingShader.Dispatch(_kernelHandle, _threadGroupCount, 1, 1);
 
         Graphics.RenderMeshIndirect(
             rparams: _materialRenderParams,
