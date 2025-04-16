@@ -66,8 +66,6 @@ cbuffer TerrainOffsetZBuffer
     float TerrainOffsetZ[1];
 }
 
-
-
 RWStructuredBuffer<int> debugNumber;
 RWStructuredBuffer<float2> debugFloat2;
 RWStructuredBuffer<float3> debugFloat3;
@@ -75,78 +73,58 @@ RWStructuredBuffer<float3> debugFloat3;
 [numthreads(32,1,1)]
 void CSMain(uint3 id : SV_DispatchThreadID)
 {
-    int agentsCount = AgentsCount[0];
-    int index = id.x;
+    const int agents_count = AgentsCount[0];
+    const int index = id.x;
 
-    int nearbyCount = 0;
-    int separationCount = 0;
-    flockCenter[index] = float2(0, 0);
-    flockAlignment[index] = float2(0, 0);
+    int nearby_count = 0;
+    float2 center = float2(0, 0);
+    float2 alignment = float2(0, 0);
+    float2 separation = float2(0, 0);
 
-    for (int i = 0; i < agentsCount; i++)
+    Agent agent = agents[index];
+
+    for (int i = 0; i < agents_count; i++)
     {
-        float2 offset = agents[i].position.xz - agents[index].position.xz;
-        float squareDistance = offset.x * offset.x + offset.y * offset.y;
-        if (squareDistance > MaxDistance[0]) continue;
-        nearbyCount++;
-        flockCenter[index] += offset;
-        if (length(agents[i].velocity) != 0) flockAlignment[index] += normalize(agents[i].velocity);
-
-        float distance = sqrt(squareDistance);
-        if (distance > MinDistance[0] || i == index) continue;
-        separationCount++;
-        flockSeparation[index] -= offset / squareDistance;
+        const Agent other = agents[i];
+        const float2 offset = other.position.xz - agent.position.xz;
+        const float square_distance = offset.x * offset.x + offset.y * offset.y;
+        if (square_distance > MaxDistance[0]) continue;
+        nearby_count++;
+        center += offset;
+        alignment += other.velocity;
+        if (i == index) continue;
+        separation -= offset * (1.0 / square_distance - 1.0 / MaxDistance[0]);
     }
 
-    if (nearbyCount > 0)
+    const float average = 1.0f / nearby_count;
+    center *= average;
+    alignment *= average;
+
+
+    center *= CohesionWeight[0];
+    if (nearby_count > 1) center = normalize(center);
+    alignment *= AlignmentWeight[0];
+    separation *= SeparationWeight[0];
+
+    if (index == 0) debugFloat2[0] = center;
+
+    flockCenter[index] = center;
+    flockAlignment[index] = alignment;
+    flockSeparation[index] = separation;
+
+    if (length(center) < 1)
     {
-        flockCenter[index] /= nearbyCount;
-        flockAlignment[index] /= nearbyCount;
-
-        flockCenter[index] *= CohesionWeight[0];
-        flockAlignment[index] *= AlignmentWeight[0];
-        flockSeparation[index] *= SeparationWeight[0];
-
-        float cohesion = length(flockCenter[index]);
-        if (cohesion < 1)// || cohesion > 10)
-        {
-            flockCenter[index] = float2(0, 0);
-        }
-
-        float2 acceleration = flockCenter[index] + flockAlignment[index] + flockSeparation[index];
-
-        agents[index].velocity += acceleration;
-        agents[index].velocity *= 0.95f;
-        float3 velocity3 = float3(agents[index].velocity.x, 0, agents[index].velocity.y);
-
-        
-        agents[index].position += velocity3 * (Speed[0] * DeltaTime[0]);
+        center = float2(0, 0);
     }
-    else
-    {
-        flockCenter[index] = agents[index].position.xz;
-        flockAlignment[index] = agents[index].velocity;
-        flockSeparation[index] = float2(0, 0);
-    }
-    if (separationCount == 0) 
-    {
-        flockSeparation[index] = float2(0, 0);
-    }
+
+    float2 acceleration = center + alignment + separation;
+
+    agent.velocity += acceleration;
+    agent.velocity = lerp(normalize(agent.velocity), agent.velocity, 0.1f);
     
-    // const int resolution = 33;
-    // float2 clampedPosition = clamp(positions[index].xz, float2(-15, -15), float2(15, 15));
-    // if (index == 0) debugFloat2[0] = clampedPosition;
-    // float2 terrainPosition = clampedPosition - float2(TerrainOffsetX[0], TerrainOffsetZ[0]);
-    // float fractionX = terrainPosition.x * resolution / 30.0f;
-    // float fractionZ = terrainPosition.y * resolution / 30.0f;
-    // int positionIndex = int(fractionX + fractionZ * resolution);
-    // // if(index == 0) debugNumber[0] = positionIndex;
-    // if (positionIndex < 0 || positionIndex >= resolution * resolution)
-    // {
-    //     return;
-    // }
-    // float terrainHeightValue = terrainHeight[positionIndex];
-    // // if(index == 0) debugNumber[0] = terrainHeightValue;
-    // positions[index].y = terrainHeightValue;
-    // if (index == 0) debugFloat3[0] = positions[0];
+    float3 velocity3 = float3(agent.velocity.x, 0, agent.velocity.y);
+
+    agent.position += velocity3 * (Speed[0] * DeltaTime[0]);
+
+    agents[index] = agent;
 }

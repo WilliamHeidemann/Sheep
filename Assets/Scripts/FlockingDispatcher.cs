@@ -43,6 +43,8 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private bool _writeNumber;
     [SerializeField] private bool _writeFloat2;
     [SerializeField] private bool _writeFloat3;
+    [SerializeField] private bool _writeAgents;
+    
 
     private int _threadGroupCount;
     private RenderParams _materialRenderParams;
@@ -153,7 +155,7 @@ public class FlockingDispatcher : MonoBehaviour
             agents[i] = new Agent
             {
                 Position = new Vector3(pointInCircle.x, 0, pointInCircle.y),
-                Velocity = Vector2.zero
+                Velocity = Random.insideUnitCircle
             };
         }
 
@@ -197,11 +199,14 @@ public class FlockingDispatcher : MonoBehaviour
 
     private void DebugLog()
     {
-        Agent[] agents = new Agent[_agentCount];
-        _agentsBuffer.GetData(agents);
-        for (int i = 0; i < _agentCount; i++)
+        if (_writeAgents)
         {
-            Log($"Agent {i}: Position: {agents[i].Position}, Velocity: {agents[i].Velocity}");
+            Agent[] agents = new Agent[_agentCount];
+            _agentsBuffer.GetData(agents);
+            for (int i = 0; i < _agentCount; i++)
+            {
+                Log($"Agent {i}: Position: {agents[i].Position}, Velocity: {agents[i].Velocity}");
+            }
         }
         
         if (_writeNumber)
@@ -254,7 +259,7 @@ public class FlockingDispatcher : MonoBehaviour
             Gizmos.color = Color.yellow;
             for (int i = 0; i < _agentCount; i++)
             {
-                Gizmos.DrawWireSphere(agents[i].Position, _maxDistance);
+                Gizmos.DrawWireSphere(agents[i].Position, Mathf.Sqrt(_maxDistance));
             }
         }
 

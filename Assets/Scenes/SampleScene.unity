@@ -632,7 +632,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1868461998570734802, guid: d4d6ee78313566d4fb5c9a6ce2e66e80, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -806,7 +806,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1092689210
 Transform:
   m_ObjectHideFlags: 0
@@ -839,14 +839,14 @@ MonoBehaviour:
   _agentShaderMaterial: {fileID: 2100000, guid: cc4e950900e52f143b5c1b0d113ce7eb, type: 2}
   _terrain: {fileID: 15600000, guid: 590f305a2dd97f94b9ed8d4fe62e4603, type: 2}
   _terrainComponent: {fileID: 464928267}
-  _agentCount: 100
-  _spawnRadius: 10
+  _agentCount: 1000
+  _spawnRadius: 50
   _maxDistance: 20
   _minDistance: 2
-  _speed: 0.1
-  _cohesionWeight: 2
-  _alignmentWeight: 2
-  _separationWeight: 0.8
+  _speed: 1
+  _cohesionWeight: 1
+  _alignmentWeight: 1
+  _separationWeight: 1
   _drawVelocity: 0
   _drawCenter: 0
   _drawAlignment: 0
@@ -856,6 +856,7 @@ MonoBehaviour:
   _writeNumber: 0
   _writeFloat2: 0
   _writeFloat3: 0
+  _writeAgents: 0
 --- !u!1 &1173492386
 GameObject:
   m_ObjectHideFlags: 0
