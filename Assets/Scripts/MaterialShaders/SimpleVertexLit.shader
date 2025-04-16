@@ -53,17 +53,36 @@ Shader "Custom/SimpleVertexLit"
             {
                 v2f output;
 
-                float3 offset = agents[id].position;
-                // float3 worldPosition = TransformObjectToWorldNormal(v.vertex.xyz) + offset; // for single mesh filter object
-                float3 worldPosition = v.vertex.xyz + offset; // for combined skinned meshes
+                // matrix
+                float4x4 b = unity_ObjectToWorld;
+                matrix a = b * unity_WorldToObject;
+
+                Agent agent = agents[id];
+                float2 velocity = agent.velocity;
+                if (velocity.x == 0 && velocity.y == 0)
+                {
+                    velocity = float2(1, 0);
+                }
+
+                float3 forward = normalize(float3(velocity.x, 0, velocity.y));
+                float3 up = float3(0, 1, 0);
+                float3 right = cross(up, forward);
+                // up = cross(forward, right); if velocity.y is not always zero
+                float3x3 rotationMatrix = float3x3(right, up, forward);
+                float3 localPosition = mul(rotationMatrix, v.vertex.xyz);
+
+                float3 offset = agent.position;
+                // float3 worldPosition = TransformObjectToWorldNormal(localPosition) + offset; // for single mesh filter object
+                float3 worldPosition = localPosition + offset; // for combined skinned meshes
                 output.position = TransformWorldToHClip(worldPosition);
 
-                // float3 worldNormal = TransformObjectToWorldNormal(v.normal); // for single mesh filter object
-                float3 worldNormal = v.normal; // for combined skinned meshes
+                float3 localNormal = normalize(mul(v.normal, rotationMatrix));
+                // float3 worldNormal = TransformObjectToWorldNormal(localNormal); // for single mesh filter object
+                float3 worldNormal = localNormal; // for combined skinned meshes
 
                 Light light = GetMainLight();
 
-                float normalDotLight = max(0, dot(worldNormal, light.direction));
+                float normalDotLight = max(0, dot(worldNormal, -normalize(light.direction)));
 
                 output.color = _Color * normalDotLight;
 

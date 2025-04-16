@@ -13,8 +13,6 @@ public class FlockingDispatcher : MonoBehaviour
     private int _kernelHandle;
 
     private GraphicsBuffer _agentsBuffer;
-    // private GraphicsBuffer _positionsBuffer;
-    // private GraphicsBuffer _velocitiesBuffer;
 
     private GraphicsBuffer _flockCenterBuffer;
     private GraphicsBuffer _flockAlignmentBuffer;
@@ -196,6 +194,13 @@ public class FlockingDispatcher : MonoBehaviour
 
     private void DebugLog()
     {
+        Agent[] agents = new Agent[_agentCount];
+        _agentsBuffer.GetData(agents);
+        for (int i = 0; i < _agentCount; i++)
+        {
+            Log($"Agent {i}: Position: {agents[i].Position}, Velocity: {agents[i].Velocity}");
+        }
+        
         if (_writeNumber)
         {
             var number = new int[1];
