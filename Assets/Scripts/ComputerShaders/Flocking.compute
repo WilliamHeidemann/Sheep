@@ -75,13 +75,13 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 {
     const int agents_count = AgentsCount[0];
     const int index = id.x;
+    Agent agent = agents[index];
 
     int nearby_count = 0;
     float2 center = float2(0, 0);
     float2 alignment = float2(0, 0);
     float2 separation = float2(0, 0);
 
-    Agent agent = agents[index];
 
     for (int i = 0; i < agents_count; i++)
     {
@@ -102,27 +102,21 @@ void CSMain(uint3 id : SV_DispatchThreadID)
 
 
     center *= CohesionWeight[0];
-    if (nearby_count > 1) center = normalize(center);
     alignment *= AlignmentWeight[0];
     separation *= SeparationWeight[0];
-
-    if (index == 0) debugFloat2[0] = center;
 
     flockCenter[index] = center;
     flockAlignment[index] = alignment;
     flockSeparation[index] = separation;
 
-    if (length(center) < 1)
-    {
-        center = float2(0, 0);
-    }
 
     float2 acceleration = center + alignment + separation;
 
     agent.velocity += acceleration;
-    agent.velocity = lerp(normalize(agent.velocity), agent.velocity, 0.1f);
+    agent.velocity = lerp(normalize(agent.velocity), agent.velocity, 0.00001);
+    if (index == 0) debugFloat2[index] = agent.velocity;
     
-    float3 velocity3 = float3(agent.velocity.x, 0, agent.velocity.y);
+    const float3 velocity3 = float3(agent.velocity.x, 0, agent.velocity.y);
 
     agent.position += velocity3 * (Speed[0] * DeltaTime[0]);
 

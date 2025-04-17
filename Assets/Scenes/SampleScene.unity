@@ -839,8 +839,8 @@ MonoBehaviour:
   _agentShaderMaterial: {fileID: 2100000, guid: cc4e950900e52f143b5c1b0d113ce7eb, type: 2}
   _terrain: {fileID: 15600000, guid: 590f305a2dd97f94b9ed8d4fe62e4603, type: 2}
   _terrainComponent: {fileID: 464928267}
-  _agentCount: 1000
-  _spawnRadius: 50
+  _agentCount: 10000
+  _spawnRadius: 30
   _maxDistance: 20
   _minDistance: 2
   _speed: 1
