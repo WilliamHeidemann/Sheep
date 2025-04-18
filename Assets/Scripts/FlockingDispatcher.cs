@@ -88,9 +88,7 @@ public class FlockingDispatcher : MonoBehaviour
         }
         else
         {
-            var combineInstances = CombineInstancesSkinnedMeshRenderers();
-            _mesh = new Mesh();
-            _mesh.CombineMeshes(combineInstances);
+            _mesh = Utility.CombineMesh(_agentPrefab);
         }
 
         _commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, CommandCount,
