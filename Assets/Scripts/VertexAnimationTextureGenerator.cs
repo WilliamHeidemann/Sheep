@@ -52,6 +52,7 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
     [Button]
     public void SampleAnimationClip()
     {
+        var texture = CreateTexture2D();
         AnimationMode.StartAnimationMode();
         const int frames = 16;
         for (int i = 0; i < frames; i++)
@@ -59,9 +60,19 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
             float time = _clip.length * i / frames;
             AnimationMode.SampleAnimationClip(_agent, _clip, time);
             var mesh = Utility.CombineMesh(_agent);
-            // write all vertex positions and normals to a texture2D
+            var vertices = mesh.vertices;
+            var frameOffset = i * mesh.vertices.Length;
+            for (int j = 0; j < vertices.Length; j++)
+            {
+                var flatIndex = frameOffset + j;
+                var textureIndexX = flatIndex % texture.width;
+                var textureIndexY = flatIndex / texture.width;
+                texture.SetPixel(textureIndexX, textureIndexY, vertices[j].ToColor());
+            }
         }
         AnimationMode.StopAnimationMode();
+        texture.Apply();
+        SaveTexture(texture);
     }
     
     /*

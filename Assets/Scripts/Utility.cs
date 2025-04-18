@@ -7,6 +7,11 @@ public static class Utility
         return new Vector3(vector3.x + vector2.x, vector3.y, vector3.z + vector2.y);
     }
 
+    public static Color ToColor(this Vector3 vector3)
+    {
+        return new Color(vector3.x, vector3.y, vector3.z);
+    }
+
     public static Mesh CombineMesh(GameObject objectWithMultipleSkinnedMeshRenderers)
     {
         var skinnedMeshRenderers = objectWithMultipleSkinnedMeshRenderers

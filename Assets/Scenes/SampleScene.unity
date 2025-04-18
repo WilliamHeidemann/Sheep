@@ -395,7 +395,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!65 &427456861
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1179,6 +1179,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SK_Sheep_cream
       objectReference: {fileID: 0}
+    - target: {fileID: 1868461998570734802, guid: d4d6ee78313566d4fb5c9a6ce2e66e80, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 1868461998808208435, guid: d4d6ee78313566d4fb5c9a6ce2e66e80, type: 3}
       propertyPath: m_LocalRotation.w
       value: 0.98528105
@@ -1736,8 +1740,8 @@ MonoBehaviour:
   _agentShaderMaterial: {fileID: 2100000, guid: cc4e950900e52f143b5c1b0d113ce7eb, type: 2}
   _terrain: {fileID: 15600000, guid: 590f305a2dd97f94b9ed8d4fe62e4603, type: 2}
   _terrainComponent: {fileID: 464928267}
-  _agentCount: 20
-  _spawnRadius: 20
+  _agentCount: 20000
+  _spawnRadius: 60
   _maxDistance: 20
   _minDistance: 2
   _speed: 1
@@ -1906,7 +1910,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 3, y: 1, z: 3}
+  m_LocalScale: {x: 30, y: 1, z: 30}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
