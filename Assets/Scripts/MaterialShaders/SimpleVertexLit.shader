@@ -48,14 +48,18 @@ Shader "Custom/SimpleVertexLit"
             CBUFFER_END
 
             StructuredBuffer<Agent> agents;
-
-            v2f vert(appdata v, const uint id : SV_InstanceID)
+            StructuredBuffer<float3> vertex_animation_buffer;
+            
+            float xorshift(int x) {
+                x ^= x << 13;
+                x ^= x >> 17;
+                x ^= x << 5;
+                return (x & 0xFFFFFFFF) / 4294967296.0f;
+            }
+            
+            v2f vert(appdata v, const uint id : SV_InstanceID, uint vertexID : SV_VertexID)
             {
                 v2f output;
-
-                // matrix
-                float4x4 b = unity_ObjectToWorld;
-                matrix a = b * unity_WorldToObject;
 
                 Agent agent = agents[id];
                 float2 velocity = agent.velocity;
@@ -67,9 +71,13 @@ Shader "Custom/SimpleVertexLit"
                 float3 forward = normalize(float3(velocity.x, 0, velocity.y));
                 float3 up = float3(0, 1, 0);
                 float3 right = cross(up, forward);
-                // up = cross(forward, right); if velocity.y is not always zero
                 float3x3 rotationMatrix = float3x3(right, up, forward);
-                float3 localPosition = mul(rotationMatrix, v.vertex.xyz);
+
+                int frame = frac(_Time.x * 40 + xorshift(id)) * 16;
+                const int vertices = 1034;
+                int index = frame * vertices + vertexID;
+                float3 vertex_position = vertex_animation_buffer[index];
+                float3 localPosition = mul(rotationMatrix, vertex_position);
 
                 float3 offset = agent.position;
                 // float3 worldPosition = TransformObjectToWorldNormal(localPosition) + offset; // for single mesh filter object
@@ -82,7 +90,7 @@ Shader "Custom/SimpleVertexLit"
 
                 Light light = GetMainLight();
 
-                float normalDotLight = max(0, dot(worldNormal, -normalize(light.direction)));
+                float normalDotLight = max(0, dot(worldNormal, normalize(light.direction)));
 
                 output.color = _Color * normalDotLight;
 
@@ -96,4 +104,5 @@ Shader "Custom/SimpleVertexLit"
             ENDHLSL
         }
     }
+
 }

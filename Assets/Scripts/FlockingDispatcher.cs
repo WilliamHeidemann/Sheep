@@ -1,3 +1,4 @@
+using System.Linq;
 using UnityEngine;
 using UtilityToolkit.Editor;
 using static UnityEngine.Debug;
@@ -7,6 +8,7 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private ComputeShader _flockingShader;
     [SerializeField] private GameObject _agentPrefab;
     [SerializeField] private Material _agentShaderMaterial;
+    [SerializeField] private Texture2D _vertexAnimationTexture;
     [SerializeField] private TerrainData _terrain;
     [SerializeField] private Terrain _terrainComponent;
 
@@ -21,6 +23,8 @@ public class FlockingDispatcher : MonoBehaviour
     private GraphicsBuffer _debugNumberBuffer;
     private GraphicsBuffer _debugFloat2Buffer;
     private GraphicsBuffer _debugFloat3Buffer;
+
+    private GraphicsBuffer _vertexAnimationBuffer;
 
     private GraphicsBuffer _terrainBuffer;
     private float[] _heights;
@@ -73,6 +77,7 @@ public class FlockingDispatcher : MonoBehaviour
         _debugFloat2Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 2);
         _debugFloat3Buffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float) * 3);
         _debugNumberBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 1, sizeof(float));
+        _vertexAnimationBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, 16544, sizeof(float) * 3);
     }
 
     private void SetupRenderingBuffer()
@@ -144,21 +149,12 @@ public class FlockingDispatcher : MonoBehaviour
 
     private void SetBuffers()
     {
-        var agents = new Agent[_agentCount];
-        var separations = new Vector2[_agentCount];
-        for (int i = 0; i < _agentCount; i++)
-        {
-            var pointInCircle = Random.insideUnitCircle * _spawnRadius;
-            separations[i] = Vector2.zero;
-            agents[i] = new Agent
-            {
-                Position = new Vector3(pointInCircle.x, 0, pointInCircle.y),
-                Velocity = Random.insideUnitCircle
-            };
-        }
-
+        var agents = InitializeAgents();
         _agentsBuffer.SetData(agents);
-        _flockSeparationBuffer.SetData(separations);
+
+        Vector3[] vertexAnimationPositions = Utility.ReadVectors().ToArray();
+        _vertexAnimationBuffer.SetData(vertexAnimationPositions);
+        _agentShaderMaterial.SetBuffer("vertex_animation_buffer", _vertexAnimationBuffer);
 
         _kernelHandle = _flockingShader.FindKernel("CSMain");
         _flockingShader.GetKernelThreadGroupSizes(_kernelHandle, out var threadGroupSize, out _, out _);
@@ -179,6 +175,49 @@ public class FlockingDispatcher : MonoBehaviour
         _flockingShader.SetFloat("Speed", _speed);
 
         _agentShaderMaterial.SetBuffer("agents", _agentsBuffer);
+    }
+
+    private Vector3[] ReadVertexAnimationTexture()
+    {
+        const int length = 16544;
+        var vertexAnimationBuffer = new Vector3[length];
+        var count = 0;
+        for (int i = 0; i < 256; i++)
+        {
+            for (int j = 0; j < 256; j++)
+            {
+                if (count == length) break;
+                
+                var pixel = _vertexAnimationTexture.GetPixel(j, i);
+
+                if (i == 0 && j < 10)
+                {
+                    print(pixel.ToVector3());
+                }
+                
+                vertexAnimationBuffer[count] = pixel.ToVector3();
+
+                count++;
+            }
+        }
+
+        return vertexAnimationBuffer;
+    }
+
+    private Agent[] InitializeAgents()
+    {
+        var agents = new Agent[_agentCount];
+        for (int i = 0; i < _agentCount; i++)
+        {
+            var pointInCircle = Random.insideUnitCircle * _spawnRadius;
+            agents[i] = new Agent
+            {
+                Position = new Vector3(pointInCircle.x, 0, pointInCircle.y),
+                Velocity = Random.insideUnitCircle
+            };
+        }
+
+        return agents;
     }
 
     private void Update()
@@ -331,6 +370,9 @@ public class FlockingDispatcher : MonoBehaviour
         _flockSeparationBuffer?.Dispose();
         _debugNumberBuffer?.Dispose();
         _debugFloat2Buffer?.Dispose();
+        _debugFloat3Buffer?.Dispose();
+        _vertexAnimationBuffer?.Dispose();
+        _terrainBuffer?.Dispose();
     }
 }
 
