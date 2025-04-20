@@ -1834,15 +1834,15 @@ MonoBehaviour:
   _vertexAnimationTexture: {fileID: 2800000, guid: b2d07c3f2f306a74f908f1112213e66e, type: 3}
   _terrain: {fileID: 15600000, guid: 590f305a2dd97f94b9ed8d4fe62e4603, type: 2}
   _terrainComponent: {fileID: 464928267}
-  _agentCount: 5
-  _spawnRadius: 5
+  _agentCount: 1000
+  _spawnRadius: 20
   _maxDistance: 20
   _minDistance: 2
   _speed: 1
   _cohesionWeight: 1
   _alignmentWeight: 1
   _separationWeight: 1
-  _drawVelocity: 1
+  _drawVelocity: 0
   _drawCenter: 0
   _drawAlignment: 0
   _drawSeparation: 0

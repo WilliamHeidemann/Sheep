@@ -6,6 +6,7 @@ Shader "Custom/SimpleVertexLit"
     }
     SubShader
     {
+        Cull Front
         Tags
         {
             "RenderPipeline" = "UniversalRenderPipeline"
@@ -106,7 +107,7 @@ Shader "Custom/SimpleVertexLit"
                 float3 worldPosition = localPosition + offset; // for combined skinned meshes
                 output.position = TransformWorldToHClip(worldPosition);
 
-                float3 localNormal = normalize(mul(v.normal, rotationMatrix));
+                float3 localNormal = normalize(mul(rotationMatrix, v.normal));
                 // float3 worldNormal = TransformObjectToWorldNormal(localNormal); // for single mesh filter object
                 float3 worldNormal = localNormal; // for combined skinned meshes
 
