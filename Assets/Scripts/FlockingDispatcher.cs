@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using UtilityToolkit.Editor;
@@ -28,6 +29,7 @@ public class FlockingDispatcher : MonoBehaviour
 
     private GraphicsBuffer _terrainBuffer;
     private float[] _heights;
+    private Dictionary<Vector3, float> _worldPositionToHeight;
 
     [SerializeField] private int _agentCount;
     [SerializeField] private float _spawnRadius;
@@ -59,8 +61,9 @@ public class FlockingDispatcher : MonoBehaviour
 
     private void Start()
     {
+        Random.InitState(0);
         CreateBuffers();
-        SetupTerrainBuffer();
+        // SetupTerrainBuffer();
         SetBuffers();
         SetupRenderingBuffer();
     }
@@ -131,12 +134,16 @@ public class FlockingDispatcher : MonoBehaviour
 
         var heights2D = _terrain.GetHeights(0, 0, _terrain.heightmapResolution, _terrain.heightmapResolution);
         _heights = new float[terrainResolution2D];
+        _worldPositionToHeight = new Dictionary<Vector3, float>();
         for (int i = 0; i < _terrain.heightmapResolution; i++)
         {
             for (int j = 0; j < _terrain.heightmapResolution; j++)
             {
-                _heights[i * _terrain.heightmapResolution + j] = heights2D[i, j] * _terrain.size.y;
-                // heights[i * _terrain.heightmapResolution + j] = _terrainComponent.SampleHeight(Vector3.zero);
+                // _heights[i * _terrain.heightmapResolution + j] = heights2D[i, j] * _terrain.size.y;
+                _heights[i * _terrain.heightmapResolution + j] = _terrainComponent.SampleHeight(Vector3.zero);
+
+                var position = new Vector3(j, 0, i);
+                _worldPositionToHeight.Add(position, _terrainComponent.SampleHeight(position));
             }
         }
 
@@ -270,6 +277,18 @@ public class FlockingDispatcher : MonoBehaviour
 
     private void OnDrawGizmos()
     {
+        if (_worldPositionToHeight is { Count: > 0 })
+        {
+            Gizmos.color = Color.red;
+            foreach (var key in _worldPositionToHeight.Keys)
+            {
+                var position = key;
+                position.y = _worldPositionToHeight[key];
+                Gizmos.DrawSphere(position, 0.2f);
+            }
+        }
+        
+        
         if (!Application.isPlaying)
             return;
 
@@ -311,10 +330,9 @@ public class FlockingDispatcher : MonoBehaviour
 
         if (_drawVelocity)
         {
-            Vector2[] velocities = new Vector2[_agentCount];
+            Gizmos.color = Color.cyan;
             for (int i = 0; i < _agentCount; i++)
             {
-                Gizmos.color = Color.black;
                 Gizmos.DrawLine(agents[i].Position, agents[i].Position.AddFlat(agents[i].Velocity));
             }
         }

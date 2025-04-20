@@ -49,14 +49,34 @@ Shader "Custom/SimpleVertexLit"
 
             StructuredBuffer<Agent> agents;
             StructuredBuffer<float3> vertex_animation_buffer;
-            
-            float xorshift(int x) {
+
+            float xorshift(int x)
+            {
                 x ^= x << 13;
                 x ^= x >> 17;
                 x ^= x << 5;
                 return (x & 0xFFFFFFFF) / 4294967296.0f;
             }
-            
+
+            float3x3 create_rotation_matrix(float2 velocity)
+            {
+                // Normalize the velocity vector in the xz-plane
+                float velocityLength = length(velocity); // The length in the xz-plane
+                float2 unitVelocity = velocity / velocityLength;
+
+                // Calculate the angle theta (atan2 of the xz components)
+                float angle = atan2(unitVelocity.y, unitVelocity.x);
+
+                // Create the rotation matrix around the y-axis
+                float3x3 rotationMatrix = float3x3(
+                    cos(angle), 0.0f, sin(angle), // First row
+                    0.0f, 1.0f, 0.0f, // Second row (no rotation along the y-axis)
+                    -sin(angle), 0.0f, cos(angle) // Third row
+                );
+
+                return rotationMatrix;
+            }
+
             v2f vert(appdata v, const uint id : SV_InstanceID, uint vertexID : SV_VertexID)
             {
                 v2f output;
@@ -70,8 +90,10 @@ Shader "Custom/SimpleVertexLit"
 
                 float3 forward = normalize(float3(velocity.x, 0, velocity.y));
                 float3 up = float3(0, 1, 0);
-                float3 right = cross(up, forward);
+                float3 right = normalize(cross(forward, up));
                 float3x3 rotationMatrix = float3x3(right, up, forward);
+                
+                // float3x3 rotationMatrix = create_rotation_matrix(velocity);
 
                 int frame = frac(_Time.x * 40 + xorshift(id)) * 16;
                 const int vertices = 1034;
