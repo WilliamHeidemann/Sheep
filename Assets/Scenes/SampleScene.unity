@@ -2268,7 +2268,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: af6560462a0ddb44080597c4773cb27e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _lookAtTarget: {fileID: 1092689210}
+  _lookAtTarget: {fileID: 74851060}
   _rotationSpeed: 5
 --- !u!43 &1249862930
 Mesh:

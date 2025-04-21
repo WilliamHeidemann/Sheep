@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace Components
@@ -6,6 +7,12 @@ namespace Components
     {
         [SerializeField] private float _rotationSpeed;
         [SerializeField] private float _moveSpeed;
+        private Animator _animator;
+
+        private void Awake()
+        {
+            _animator = GetComponent<Animator>();
+        }
 
         private void Update()
         {
@@ -23,6 +30,12 @@ namespace Components
     
         private void Move(float vertical)
         {
+            if (vertical == 0)
+            {
+                _animator.SetInteger("AnimationID", 0);
+                return;
+            } 
+            _animator.SetInteger("AnimationID", 4);
             var forward = transform.forward;
             var move = forward * vertical * _moveSpeed * Time.deltaTime;
             transform.position += move;
