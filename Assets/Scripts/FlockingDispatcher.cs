@@ -12,6 +12,7 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private Texture2D _vertexAnimationTexture;
     [SerializeField] private TerrainData _terrain;
     [SerializeField] private Terrain _terrainComponent;
+    [SerializeField] private Transform _target;
 
     private int _kernelHandle;
 
@@ -230,6 +231,8 @@ public class FlockingDispatcher : MonoBehaviour
     private void Update()
     {
         _flockingShader.SetFloat("DeltaTime", Time.deltaTime);
+        _flockingShader.SetFloat("TargetX", _target.position.x);
+        _flockingShader.SetFloat("TargetZ", _target.position.z);
         _flockingShader.Dispatch(_kernelHandle, _threadGroupCount, 1, 1);
 
         Graphics.RenderMeshIndirect(

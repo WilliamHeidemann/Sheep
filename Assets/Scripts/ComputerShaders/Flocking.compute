@@ -1,8 +1,5 @@
 #pragma kernel CSMain
 
-// RWStructuredBuffer<float3> positions;
-// RWStructuredBuffer<float2> velocities;
-
 struct Agent
 {
     float3 position;
@@ -66,6 +63,12 @@ cbuffer TerrainOffsetZBuffer
     float TerrainOffsetZ[1];
 }
 
+cbuffer TargetBuffer
+{
+    float TargetX[1];
+    float TargetZ[1];
+}
+
 RWStructuredBuffer<int> debugNumber;
 RWStructuredBuffer<float2> debugFloat2;
 RWStructuredBuffer<float3> debugFloat3;
@@ -100,7 +103,6 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     center *= average;
     alignment *= average;
 
-
     center *= CohesionWeight[0];
     alignment *= AlignmentWeight[0];
     separation *= SeparationWeight[0];
@@ -109,11 +111,19 @@ void CSMain(uint3 id : SV_DispatchThreadID)
     flockAlignment[index] = alignment;
     flockSeparation[index] = separation;
 
+    const float2 target = float2(TargetX[0], TargetZ[0]);
+    const float2 toTarget = -agent.position.xz + target;
+    const float distanceSq = dot(toTarget, toTarget);
+    float2 avoid_force = float2(0, 0);
+    if (distanceSq < MaxDistance[0] * 2) {
+        const float strength = 100.0 / (distanceSq + 0.001);
+        avoid_force = -normalize(toTarget) * strength;
+    }
 
-    float2 acceleration = center + alignment + separation;
+    const float2 acceleration = center + alignment + separation + avoid_force;
 
     agent.velocity += acceleration;
-    agent.velocity = lerp(normalize(agent.velocity), agent.velocity, 0.00001);
+    agent.velocity = lerp(normalize(agent.velocity), agent.velocity, 0.3);
     if (index == 0) debugFloat2[index] = agent.velocity;
     
     const float3 velocity3 = float3(agent.velocity.x, 0, agent.velocity.y);
