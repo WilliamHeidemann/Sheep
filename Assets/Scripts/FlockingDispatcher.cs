@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using UtilityToolkit.Editor;
+// using UtilityToolkit.Editor;
 using static UnityEngine.Debug;
 
 public class FlockingDispatcher : MonoBehaviour
@@ -32,8 +32,8 @@ public class FlockingDispatcher : MonoBehaviour
     private float[] _heights;
     private Dictionary<Vector3, float> _worldPositionToHeight;
 
-    [SerializeField] private int _agentCount;
-    [SerializeField] private float _spawnRadius;
+    [SerializeField] private AgentCounter _agentCount;
+    private float spawnRadius => 6.82f * Mathf.Log(_agentCount) - 13.13f;
     [SerializeField] private float _maxDistance;
     [SerializeField] private float _minDistance;
     [SerializeField] private float _speed;
@@ -217,7 +217,7 @@ public class FlockingDispatcher : MonoBehaviour
         var agents = new Agent[_agentCount];
         for (int i = 0; i < _agentCount; i++)
         {
-            var pointInCircle = Random.insideUnitCircle * _spawnRadius;
+            var pointInCircle = Random.insideUnitCircle * spawnRadius;
             agents[i] = new Agent
             {
                 Position = new Vector3(pointInCircle.x, 0, pointInCircle.y),
@@ -371,7 +371,7 @@ public class FlockingDispatcher : MonoBehaviour
         }
     }
 
-    [Button]
+    // [Button]
     public void UpdateValues()
     {
         _flockingShader.SetFloat("MaxDistance", _maxDistance);

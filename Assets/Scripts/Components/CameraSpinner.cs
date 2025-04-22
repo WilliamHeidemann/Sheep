@@ -1,5 +1,5 @@
 using UnityEngine;
-using UtilityToolkit.Editor;
+// using UtilityToolkit.Editor;
 
 namespace Components
 {
@@ -14,7 +14,7 @@ namespace Components
             transform.LookAt(_lookAtTarget);
         }
     
-        [Button]
+        // [Button]
         public void ResetCamera()
         {
             transform.LookAt(_lookAtTarget);

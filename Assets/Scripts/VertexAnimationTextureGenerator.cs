@@ -5,9 +5,7 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using UnityEngine.Experimental.Rendering;
-using UtilityToolkit.Editor;
-using File = UnityEngine.Windows.File;
+// using UtilityToolkit.Editor;
 
 public class VertexAnimationTextureGenerator : MonoBehaviour
 {
@@ -16,7 +14,7 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
     [SerializeField] private Texture2D _vertexAnimationTexture;
     [SerializeField] private GameObject _tempGameObject;
 
-    [Button("Convert Clip To Vertex Animation Texture")]
+    // [Button("Convert Clip To Vertex Animation Texture")]
     public void AnimationToVat()
     {
         if (_agent == null || _clip == null)
@@ -31,12 +29,12 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
         var path = "Assets/VertexAnimationTextures/VAT.csv";
         using (StreamWriter writer = new StreamWriter(path))
         {
-            AnimationMode.StartAnimationMode();
+            // AnimationMode.StartAnimationMode();
             const int frames = 16;
             for (int i = 0; i < frames; i++)
             {
                 float time = _clip.length * i / frames;
-                AnimationMode.SampleAnimationClip(_agent, _clip, time);
+                // AnimationMode.SampleAnimationClip(_agent, _clip, time);
                 var mesh = Utility.CombineMesh(_agent);
                 var vertices = mesh.vertices;
                 var frameOffset = i * mesh.vertices.Length;
@@ -52,7 +50,7 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
         }
 
 
-        AnimationMode.StopAnimationMode();
+        // AnimationMode.StopAnimationMode();
         texture.Apply();
         SaveTexture(texture);
     }
@@ -82,11 +80,11 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
         var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
         var path = $"Assets/VertexAnimationTextures/VAT_{timestamp}.png";
         File.WriteAllBytes(path, bytes);
-        AssetDatabase.ImportAsset(path);
+        // AssetDatabase.ImportAsset(path);
         Debug.Log("VAT texture saved to: " + path);
     }
 
-    [Button]
+    // [Button]
     public void GetTextureContentLength()
     {
         if (!_vertexAnimationTexture.isReadable) return;
@@ -116,7 +114,7 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
         print($"Readable: {readable}. Unreadable: {unreadable}");
     } // 16568 readable
 
-    [Button]
+    // [Button]
     public void LogInfo()
     {
         print($"Clip length: {_clip.length}");
@@ -125,7 +123,7 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
         print($"CSV length: {Utility.ReadVectors().Count()}");
     }
 
-    [Button]
+    // [Button]
     public void GetVertexCount()
     {
         var mesh = Utility.CombineMesh(_agent);
@@ -133,7 +131,7 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
         print(vertices.Length);
     }
 
-    [Button]
+    // [Button]
     public void SetMesh()
     {
         Mesh mesh = Utility.CombineMesh(_agent);
@@ -157,7 +155,7 @@ public class VertexAnimationTextureGenerator : MonoBehaviour
         _tempGameObject.GetComponent<MeshFilter>().mesh = mesh;
     }
 
-    [Button]
+    // [Button]
     public void SetMeshFromCsv()
     {
         var vertices = Utility.ReadVectors().ToArray();
