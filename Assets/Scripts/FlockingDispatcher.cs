@@ -140,7 +140,6 @@ public class FlockingDispatcher : MonoBehaviour
         {
             for (int j = 0; j < _terrain.heightmapResolution; j++)
             {
-                // _heights[i * _terrain.heightmapResolution + j] = heights2D[i, j] * _terrain.size.y;
                 _heights[i * _terrain.heightmapResolution + j] = _terrainComponent.SampleHeight(Vector3.zero);
 
                 var position = new Vector3(j, 0, i);

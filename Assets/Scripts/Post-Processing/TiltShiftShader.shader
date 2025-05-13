@@ -6,6 +6,7 @@ Shader "Custom/TiltShiftShader"
         _BlurAmount ("Blur Amount", Float) = 2.0
         _FocusPosition ("Focus Y Position", Range(0,1)) = 0.5
         _FocusRange ("Focus Range", Range(0,1)) = 0.2
+        _ShiftStrength ("Shift Strength", Range(0,1)) = 0.3
     }
 
     SubShader
@@ -30,6 +31,7 @@ Shader "Custom/TiltShiftShader"
             float _BlurAmount;
             float _FocusPosition;
             float _FocusRange;
+            float _ShiftStrength;
 
             struct appdata
             {
@@ -57,7 +59,7 @@ Shader "Custom/TiltShiftShader"
                 float y = uv.y - 0.5;
 
                 // Scale down the vertical based on distance from center
-                float shift = y * abs(y) * 0.3; // tweak the 0.3 for effect strength
+                float shift = y * abs(y) * _ShiftStrength; // tweak the 0.3 for effect strength
 
                 uv.y -= shift;
                 return uv;
