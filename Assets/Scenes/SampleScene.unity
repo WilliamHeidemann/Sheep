@@ -2588,7 +2588,7 @@ MonoBehaviour:
   _drawCenter: 0
   _drawAlignment: 0
   _drawSeparation: 0
-  _drawMaxDistance: 0
+  _drawMaxDistance: 1
   _drawMinDistance: 0
   _writeNumber: 0
   _writeFloat2: 0
@@ -3780,7 +3780,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Enter text...
+  m_text: Enter Sheep Count...
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 6dc8d8a63e8597742a86d036fba23478, type: 2}
   m_sharedMaterial: {fileID: 2656755094065750126, guid: 6dc8d8a63e8597742a86d036fba23478, type: 2}

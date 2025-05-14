@@ -35,7 +35,8 @@ public class FlockingDispatcher : MonoBehaviour
     [SerializeField] private AgentCounter _agentCount;
     private float spawnRadius => 6.82f * Mathf.Log(_agentCount) - 13.13f;
     [SerializeField] private float _maxDistance;
-    [SerializeField] private float _minDistance;
+    // [SerializeField] 
+    private float _minDistance;
     [SerializeField] private float _speed;
     [SerializeField] private float _cohesionWeight;
     [SerializeField] private float _alignmentWeight;
@@ -91,14 +92,9 @@ public class FlockingDispatcher : MonoBehaviour
             worldBounds = new Bounds(Vector3.zero, Vector3.one * 1000)
         };
 
-        if (_agentPrefab.TryGetComponent<MeshFilter>(out var meshFilter))
-        {
-            _mesh = meshFilter.sharedMesh;
-        }
-        else
-        {
-            _mesh = Utility.CombineMesh(_agentPrefab);
-        }
+        _mesh = _agentPrefab.TryGetComponent<MeshFilter>(out var meshFilter) 
+            ? meshFilter.sharedMesh 
+            : Utility.CombineMesh(_agentPrefab);
 
         _commandBuffer = new GraphicsBuffer(GraphicsBuffer.Target.IndirectArguments, CommandCount,
             GraphicsBuffer.IndirectDrawIndexedArgs.size);

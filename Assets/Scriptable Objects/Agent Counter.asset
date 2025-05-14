@@ -12,4 +12,4 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd0b2ab46a2945e8bebf0b7c48776298, type: 3}
   m_Name: Agent Counter
   m_EditorClassIdentifier: 
-  AgentCount: 1000
+  AgentCount: 10000

@@ -73,9 +73,11 @@ Shader "Custom/SheepVertexShader"
                 float3 forward = normalize(float3(velocity.x, 0, velocity.y));
                 float3 up = float3(0, 1, 0);
                 float3 right = normalize(cross(forward, up));
-                float3x3 rotationMatrix = float3x3(right, up, forward);
-                
-                int frame = frac(_Time.x * 40 + xorshift(id)) * 16;
+                const float3x3 rotationMatrix = float3x3(right, up, forward);
+
+                const int animation_speed = 40;
+                const int frame_count = 16;
+                int frame = frac(_Time.x * animation_speed + xorshift(id)) * frame_count;
                 const int vertices = 1034;
                 int index = frame * vertices + vertexID;
                 float3 vertex_position = vertex_animation_buffer[index];
@@ -86,13 +88,9 @@ Shader "Custom/SheepVertexShader"
                 output.position = TransformWorldToHClip(worldPosition);
 
                 float3 localNormal = normalize(mul(rotationMatrix, v.normal));
-                float3 worldNormal = localNormal;
-
                 Light light = GetMainLight();
-
-                float normalDotLight = max(0, dot(worldNormal, normalize(light.direction)));
-
-                output.color = _Color * normalDotLight;
+                const float intensity = max(0.05, dot(localNormal, normalize(light.direction)));
+                output.color = _Color * intensity;
 
                 return output;
             }

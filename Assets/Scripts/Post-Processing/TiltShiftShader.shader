@@ -55,12 +55,8 @@ Shader "Custom/TiltShiftShader"
 
             float2 shiftUV(float2 uv)
             {
-                // Center around middle Y
                 float y = uv.y - 0.5;
-
-                // Scale down the vertical based on distance from center
-                float shift = y * abs(y) * _ShiftStrength; // tweak the 0.3 for effect strength
-
+                float shift = y * abs(y) * _ShiftStrength;
                 uv.y -= shift;
                 return uv;
             }
